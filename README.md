@@ -34,10 +34,13 @@ When you run `./setup.sh` in a terminal it asks:
 1. Install **AUR** packages (yay + `localsend-bin`, …)? **[Y/n]**
 2. Install/stow **dotfiles**? **[Y/n]**  
    - If yes and dotfiles are missing: git URL + directory
-3. **Hardware extras**: `1) none` / `2) macbook` (Broadcom Wi‑Fi)
+3. **Hardware extras**:
+   - `1) none` (default)
+   - `2) macbook` — Broadcom Wi‑Fi (`broadcom-wl`)
+   - `3) amd` — AMD GPU stack (`vulkan-radeon`, VA-API, `amdgpu`, `amd-ucode`)
 4. Confirm and continue
 
-Defaults are the usual full install (AUR + dotfiles, no MacBook packages).
+Defaults are the usual full install (AUR + dotfiles, no hardware extras).
 
 ### Non-interactive / automation
 
@@ -47,7 +50,8 @@ Env vars skip prompts for those choices:
 |----------|---------|
 | `DOTFILES_DIR` | Path to dotfiles (default `~/dotfiles`) |
 | `DOTFILES_REPO` | Git URL if clone needed |
-| `INSTALL_HARDWARE=macbook` | Extra hardware packages |
+| `INSTALL_HARDWARE=macbook` | MacBook Wi‑Fi packages |
+| `INSTALL_HARDWARE=amd` | AMD GPU/CPU packages |
 | `SKIP_DOTFILES=1` | Packages/services only |
 | `SKIP_AUR=1` | Skip yay + AUR |
 
@@ -75,6 +79,7 @@ arch/
     packages.txt                 # official repos
     packages-aur.txt             # AUR (localsend-bin, …)
     packages-hardware-macbook.txt
+    packages-hardware-amd.txt
   config/mimetypes.sh
   iwd/main.conf
   systemd/ignore-power-key.conf

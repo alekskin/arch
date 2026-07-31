@@ -103,6 +103,7 @@ prompt_options() {
     echo "  Hardware extras:"
     echo "    1) none (default)"
     echo "    2) macbook  (broadcom-wl + linux-headers)"
+    echo "    3) amd      (vulkan-radeon, VA-API, amdgpu, amd-ucode)"
     if [[ -t 0 ]]; then
       read -r -p "  Choice [1]: " hw || hw=""
     else
@@ -110,6 +111,7 @@ prompt_options() {
     fi
     case "${hw:-1}" in
       2|macbook|MacBook|MACBOOK) INSTALL_HARDWARE=macbook ;;
+      3|amd|AMD) INSTALL_HARDWARE=amd ;;
       *) INSTALL_HARDWARE=none ;;
     esac
   fi
@@ -177,15 +179,18 @@ sudo pacman -Syu --noconfirm
 sudo pacman -S --needed --noconfirm "${packages[@]}"
 echo "packages: finished"
 
-if [[ "${INSTALL_HARDWARE:-}" == "macbook" && -f ./packages/packages-hardware-macbook.txt ]]; then
-  echo "packages-hardware-macbook: started"
-  mapfile -t hw_packages < <(read_pkg_list ./packages/packages-hardware-macbook.txt)
-  if ((${#hw_packages[@]} > 0)); then
-    sudo pacman -S --needed --noconfirm "${hw_packages[@]}"
+if [[ -n "${INSTALL_HARDWARE:-}" ]]; then
+  hw_file="./packages/packages-hardware-${INSTALL_HARDWARE}.txt"
+  if [[ -f "$hw_file" ]]; then
+    echo "packages-hardware-${INSTALL_HARDWARE}: started"
+    mapfile -t hw_packages < <(read_pkg_list "$hw_file")
+    if ((${#hw_packages[@]} > 0)); then
+      sudo pacman -S --needed --noconfirm "${hw_packages[@]}"
+    fi
+    echo "packages-hardware-${INSTALL_HARDWARE}: finished"
+  else
+    echo "packages-hardware: no file $hw_file (ignored)" >&2
   fi
-  echo "packages-hardware-macbook: finished"
-elif [[ -n "${INSTALL_HARDWARE:-}" ]]; then
-  echo "packages-hardware: unknown profile '${INSTALL_HARDWARE}' (ignored)"
 fi
 
 # ---------------------------------------------------------------------------
@@ -348,5 +353,5 @@ echo "  3. Wi-Fi: Super+Ctrl+W or: impala"
 echo "  4. Tailscale: sudo tailscale up"
 echo "  5. if docker group was added: log out/in once"
 echo ""
-echo "MacBook Wi-Fi driver: INSTALL_HARDWARE=macbook ./setup.sh"
-echo "Dotfiles only:        $DOTFILES_DIR/install.sh"
+echo "Hardware later:  INSTALL_HARDWARE=amd|macbook ./setup.sh  (or re-run and choose at prompt)"
+echo "Dotfiles only:   $DOTFILES_DIR/install.sh"

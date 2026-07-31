@@ -1,0 +1,15 @@
+# Optional — AMD GPU (and optional AMD CPU microcode).
+# Chosen via setup.sh hardware prompt, or: INSTALL_HARDWARE=amd ./setup.sh
+
+# Vulkan / 3D (mesa is already in the main list)
+vulkan-radeon
+
+# Video decode / presentation
+libva-mesa-driver
+mesa-vdpau
+
+# Xwayland / legacy X helper (harmless if unused)
+xf86-video-amdgpu
+
+# AMD CPU microcode (safe to install on AMD systems; skip on pure Intel)
+amd-ucode
