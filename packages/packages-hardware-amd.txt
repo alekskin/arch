@@ -1,15 +1,17 @@
 # Optional — AMD GPU (and optional AMD CPU microcode).
 # Chosen via setup.sh hardware prompt, or: INSTALL_HARDWARE=amd ./setup.sh
+#
+# Note: mesa (main packages.txt) already provides OpenGL + VA-API for AMD.
+# This file adds the AMD-specific Vulkan driver, X helper, firmware, and ucode.
 
-# Vulkan / 3D (mesa is already in the main list)
+# Vulkan for AMD GPUs
 vulkan-radeon
 
-# Video decode / presentation
-libva-mesa-driver
-mesa-vdpau
-
-# Xwayland / legacy X helper (harmless if unused)
+# X.org amdgpu driver (helps some Xwayland / hybrid setups)
 xf86-video-amdgpu
 
-# AMD CPU microcode (safe to install on AMD systems; skip on pure Intel)
+# GPU firmware (usually pulled by linux-firmware; explicit for clarity)
+linux-firmware-amdgpu
+
+# AMD CPU microcode (install on AMD CPUs; harmless to list for AMD boxes)
 amd-ucode
