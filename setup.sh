@@ -103,7 +103,7 @@ prompt_options() {
     echo "  Hardware extras:"
     echo "    1) none (default)"
     echo "    2) macbook  (broadcom-wl + linux-headers)"
-    echo "    3) amd      (vulkan-radeon, VA-API, amdgpu, amd-ucode)"
+    echo "    3) amd      (vulkan-radeon, amdgpu, firmware, amd-ucode)"
     if [[ -t 0 ]]; then
       read -r -p "  Choice [1]: " hw || hw=""
     else
