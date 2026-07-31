@@ -9,12 +9,9 @@
 # Usage:
 #   cd ~/arch && ./setup.sh
 #
-# Optional env:
-#   DOTFILES_DIR=~/dotfiles          # default: $HOME/dotfiles
-#   DOTFILES_REPO=git@github.com:BabkinAleksandr/dotfiles.git
-#   INSTALL_HARDWARE=macbook         # also install packages-hardware-macbook.txt
-#   SKIP_DOTFILES=1                  # packages/services only
-#   SKIP_AUR=1                       # skip yay + AUR packages
+# Interactive prompts choose optional steps when run in a terminal.
+# Env vars still override (useful for automation / non-interactive):
+#   DOTFILES_DIR, DOTFILES_REPO, INSTALL_HARDWARE, SKIP_DOTFILES, SKIP_AUR
 
 set -euo pipefail
 
@@ -25,6 +22,123 @@ cd "$SCRIPT_DIR"
 
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles}"
 DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/BabkinAleksandr/dotfiles.git}"
+
+# ---------------------------------------------------------------------------
+# Interactive options (skipped if env already set, or stdin is not a TTY)
+# ---------------------------------------------------------------------------
+ask_yes_no() {
+  # ask_yes_no "Question?" default_yes|default_no → sets REPLY to y or n
+  local prompt=$1
+  local def=${2:-default_yes}
+  local hint yn
+  if [[ "$def" == "default_no" ]]; then
+    hint="y/N"
+  else
+    hint="Y/n"
+  fi
+
+  if [[ ! -t 0 ]]; then
+    # Non-interactive: keep default
+    if [[ "$def" == "default_no" ]]; then
+      REPLY=n
+    else
+      REPLY=y
+    fi
+    return 0
+  fi
+
+  while true; do
+    read -r -p "$prompt [$hint] " yn || yn=""
+    yn=${yn:-}
+    case "$yn" in
+      "")
+        if [[ "$def" == "default_no" ]]; then REPLY=n; else REPLY=y; fi
+        return 0
+        ;;
+      y|Y|yes|YES) REPLY=y; return 0 ;;
+      n|N|no|NO) REPLY=n; return 0 ;;
+      *) echo "  Please answer y or n." ;;
+    esac
+  done
+}
+
+prompt_options() {
+  echo ""
+  echo "Optional steps (Enter accepts the default):"
+  echo ""
+
+  # AUR / yay
+  if [[ -z "${SKIP_AUR+x}" ]]; then
+    ask_yes_no "  Install AUR packages (yay + localsend-bin, etc.)?" default_yes
+    if [[ "$REPLY" == "y" ]]; then
+      SKIP_AUR=0
+    else
+      SKIP_AUR=1
+    fi
+  fi
+
+  # Dotfiles
+  if [[ -z "${SKIP_DOTFILES+x}" ]]; then
+    ask_yes_no "  Install/stow dotfiles (sway, waybar, bash, …)?" default_yes
+    if [[ "$REPLY" == "y" ]]; then
+      SKIP_DOTFILES=0
+      if [[ -t 0 ]] && [[ ! -d "$DOTFILES_DIR/.git" && ! -f "$DOTFILES_DIR/install.sh" ]]; then
+        read -r -p "  Dotfiles git URL [$DOTFILES_REPO]: " url || url=""
+        if [[ -n "${url:-}" ]]; then
+          DOTFILES_REPO=$url
+        fi
+        read -r -p "  Dotfiles directory [$DOTFILES_DIR]: " dir || dir=""
+        if [[ -n "${dir:-}" ]]; then
+          DOTFILES_DIR=$dir
+        fi
+      fi
+    else
+      SKIP_DOTFILES=1
+    fi
+  fi
+
+  # Hardware profile
+  if [[ -z "${INSTALL_HARDWARE+x}" ]]; then
+    echo ""
+    echo "  Hardware extras:"
+    echo "    1) none (default)"
+    echo "    2) macbook  (broadcom-wl + linux-headers)"
+    if [[ -t 0 ]]; then
+      read -r -p "  Choice [1]: " hw || hw=""
+    else
+      hw=1
+    fi
+    case "${hw:-1}" in
+      2|macbook|MacBook|MACBOOK) INSTALL_HARDWARE=macbook ;;
+      *) INSTALL_HARDWARE=none ;;
+    esac
+  fi
+
+  # Normalize empty / none
+  [[ "${INSTALL_HARDWARE:-none}" == "none" ]] && INSTALL_HARDWARE=""
+
+  echo ""
+  echo "Selections:"
+  echo "  AUR packages:     $([[ "${SKIP_AUR:-0}" == "1" ]] && echo no || echo yes)"
+  echo "  Dotfiles stow:    $([[ "${SKIP_DOTFILES:-0}" == "1" ]] && echo no || echo yes)"
+  if [[ "${SKIP_DOTFILES:-0}" != "1" ]]; then
+    echo "  Dotfiles dir:     $DOTFILES_DIR"
+    echo "  Dotfiles repo:    $DOTFILES_REPO"
+  fi
+  echo "  Hardware extras:  ${INSTALL_HARDWARE:-none}"
+  echo ""
+
+  if [[ -t 0 ]]; then
+    ask_yes_no "Continue with installation?" default_yes
+    if [[ "$REPLY" != "y" ]]; then
+      echo "Aborted."
+      exit 0
+    fi
+  fi
+  echo ""
+}
+
+prompt_options
 
 read_pkg_list() {
   sed -e 's/[[:space:]]*#.*//' -e '/^[[:space:]]*$/d' "$1"
@@ -70,6 +184,8 @@ if [[ "${INSTALL_HARDWARE:-}" == "macbook" && -f ./packages/packages-hardware-ma
     sudo pacman -S --needed --noconfirm "${hw_packages[@]}"
   fi
   echo "packages-hardware-macbook: finished"
+elif [[ -n "${INSTALL_HARDWARE:-}" ]]; then
+  echo "packages-hardware: unknown profile '${INSTALL_HARDWARE}' (ignored)"
 fi
 
 # ---------------------------------------------------------------------------

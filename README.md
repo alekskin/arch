@@ -27,23 +27,35 @@ sudo reboot
 
 At **SDDM**, pick session **Sway**.
 
-### MacBook (Broadcom Wi‑Fi)
+### Interactive prompts
 
-```bash
-INSTALL_HARDWARE=macbook ./setup.sh
-```
+When you run `./setup.sh` in a terminal it asks:
 
-Installs `broadcom-wl` + `linux-headers` from `packages/packages-hardware-macbook.txt`.
+1. Install **AUR** packages (yay + `localsend-bin`, …)? **[Y/n]**
+2. Install/stow **dotfiles**? **[Y/n]**  
+   - If yes and dotfiles are missing: git URL + directory
+3. **Hardware extras**: `1) none` / `2) macbook` (Broadcom Wi‑Fi)
+4. Confirm and continue
 
-### Environment overrides
+Defaults are the usual full install (AUR + dotfiles, no MacBook packages).
+
+### Non-interactive / automation
+
+Env vars skip prompts for those choices:
 
 | Variable | Meaning |
 |----------|---------|
 | `DOTFILES_DIR` | Path to dotfiles (default `~/dotfiles`) |
-| `DOTFILES_REPO` | Git URL if clone needed (default GitHub dotfiles) |
+| `DOTFILES_REPO` | Git URL if clone needed |
 | `INSTALL_HARDWARE=macbook` | Extra hardware packages |
 | `SKIP_DOTFILES=1` | Packages/services only |
 | `SKIP_AUR=1` | Skip yay + AUR |
+
+Example:
+
+```bash
+SKIP_AUR=1 INSTALL_HARDWARE=macbook ./setup.sh
+```
 
 ## What `setup.sh` does
 
