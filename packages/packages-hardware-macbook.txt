@@ -1,0 +1,6 @@
+# Optional — only install on MacBooks / machines with Broadcom STA Wi-Fi.
+# setup.sh: INSTALL_HARDWARE=macbook ./setup.sh
+# or: sudo pacman -S --needed $(grep -vE '^\s*(#|$)' packages-hardware-macbook.txt)
+
+broadcom-wl
+linux-headers

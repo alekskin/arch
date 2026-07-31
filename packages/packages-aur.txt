@@ -1,0 +1,5 @@
+# AUR packages (setup.sh bootstraps yay via yay-bin, then installs this list).
+# Manual: yay -S --needed $(grep -vE '^\s*(#|$)' packages-aur.txt)
+
+# LocalSend (AirDrop-style LAN transfer) — prebuilt binary
+localsend-bin

@@ -1,34 +1,124 @@
-broadcom-wl
-linux-headers
+# Official Arch packages for a sway desktop (bare install → usable session).
+# Optional hardware extras: packages-hardware-macbook.txt
+# AUR: packages-aur.txt (via yay in setup.sh)
+
+# --- Graphics / Wayland base (required on bare metal) ---
+mesa
+libglvnd
+xorg-xwayland
+# Common Intel (safe no-op if unused); AMD users may also want vulkan-radeon
+vulkan-intel
+intel-media-driver
+
+# --- Session / compositor ---
 sddm
 sway
 swaybg
 swayidle
 swaylock
 waybar
+mako
+polkit
+polkit-gnome
+# Portals (screenshare / file dialogs on wlroots)
+xdg-desktop-portal
+xdg-desktop-portal-wlr
+xdg-desktop-portal-gtk
+# On-screen volume/brightness display
+swayosd
+# Day/night gamma (night light)
+wlsunset
+# Power profiles
+power-profiles-daemon
+upower
+python-gobject
+
+# --- Desktop integration ---
+xdg-utils
+xdg-user-dirs
+dbus
+gtk3
+qt5-wayland
+qt6-wayland
+
+# --- Terminals & shell ---
 alacritty
 foot
-noto-fonts
-ttf-jetbrains-mono-nerd
-ttf-liberation
 starship
 tmux
 vim
 neovim
-brightnessctl
-htop
-wofi
+bash-completion
+
+# --- Fonts ---
+noto-fonts
+noto-fonts-emoji
+ttf-jetbrains-mono-nerd
+ttf-liberation
+
+# --- Audio ---
 pipewire
 pipewire-alsa
 pipewire-pulse
+pipewire-jack
 wireplumber
 wiremix
+playerctl
+
+# --- Bluetooth / network ---
 bluez
 bluez-utils
 bluetui
 impala
 iwd
+# mDNS optional later: avahi nss-mdns
+
+# --- Launcher ---
+wofi
+
+# --- Clipboard history ---
+wl-clipboard
+cliphist
+wl-clip-persist
+
+# --- Screenshots & screen recording ---
 grim
 slurp
+wf-recorder
+ffmpeg
+libnotify
+jq
+satty
+
+# --- Containers / mesh VPN ---
+docker
+docker-compose
+docker-buildx
+tailscale
+
+# --- Build tools (yay bootstrap) ---
+base-devel
+git
+
+# --- Utils / file manager ---
+brightnessctl
+htop
 thunar
+thunar-volman
+gvfs
+gvfs-mtp
+tumbler
+ffmpegthumbnailer
 stow
+fzf
+lazygit
+lazydocker
+btop
+
+# --- GUIs ---
+pinta
+libreoffice-fresh
+mpv
+mpv-mpris
+evince
+imv
