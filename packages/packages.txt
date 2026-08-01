@@ -76,10 +76,11 @@ iwd
 # --- Launcher ---
 wofi
 
-# --- Clipboard history ---
+# --- Clipboard history + Super+C/X/V key injection ---
 wl-clipboard
 cliphist
 wl-clip-persist
+wtype
 
 # --- Screenshots & screen recording ---
 grim
