@@ -344,6 +344,34 @@ fi
 echo "mimetypes: finished"
 
 # ---------------------------------------------------------------------------
+# SSH key (per-machine). Generated only if missing — never overwritten.
+# The private key stays on this machine.
+# ---------------------------------------------------------------------------
+echo "ssh-key: started"
+if command -v ssh-keygen >/dev/null; then
+  u=$(target_user)
+  uhome=$(getent passwd "$u" 2>/dev/null | cut -d: -f6)
+  uhome=${uhome:-$HOME}
+  key="$uhome/.ssh/id_github"
+  if [[ -f "$key" ]]; then
+    echo "ssh-key: $key already exists (keeping it)"
+  else
+    echo "ssh-key: generating ed25519 key at $key"
+    run_as_user mkdir -p "$uhome/.ssh"
+    run_as_user chmod 700 "$uhome/.ssh"
+    if [[ -t 0 ]]; then
+      # Prompt for a passphrase (empty = none); the ssh-agent caches it per login.
+      run_as_user ssh-keygen -t ed25519 -C "$u@$(uname -n)" -f "$key"
+    else
+      run_as_user ssh-keygen -t ed25519 -C "$u@$(uname -n)" -N "" -f "$key"
+    fi
+  fi
+else
+  echo "ssh-key: ssh-keygen not found (is openssh installed?) — skipped" >&2
+fi
+echo "ssh-key: finished"
+
+# ---------------------------------------------------------------------------
 echo ""
 echo "=== Done ==="
 echo "Next:"

@@ -71,6 +71,8 @@ bluez-utils
 bluetui
 impala
 iwd
+# SSH client + agent (git over SSH; agent runs as a systemd --user service)
+openssh
 # mDNS optional later: avahi nss-mdns
 
 # --- Launcher ---
