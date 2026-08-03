@@ -78,6 +78,11 @@ iwd
 openssh
 # mDNS optional later: avahi nss-mdns
 
+# --- Fingerprint (optional; harmless on machines without a sensor) ---
+# PAM wiring + enrollment happens via the setup prompt / config/fingerprint-setup.sh
+fprintd
+usbutils
+
 # --- Launcher ---
 wofi
 

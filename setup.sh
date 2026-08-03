@@ -11,7 +11,8 @@
 #
 # Interactive prompts choose optional steps when run in a terminal.
 # Env vars still override (useful for automation / non-interactive):
-#   DOTFILES_DIR, DOTFILES_REPO, INSTALL_HARDWARE, SKIP_DOTFILES, SKIP_AUR
+#   DOTFILES_DIR, DOTFILES_REPO, INSTALL_HARDWARE, SKIP_DOTFILES, SKIP_AUR,
+#   SETUP_FINGERPRINT
 
 set -euo pipefail
 
@@ -119,6 +120,12 @@ prompt_options() {
   # Normalize empty / none
   [[ "${INSTALL_HARDWARE:-none}" == "none" ]] && INSTALL_HARDWARE=""
 
+  # Fingerprint (only meaningful if this machine has a sensor; enrolls a finger)
+  if [[ -z "${SETUP_FINGERPRINT+x}" ]]; then
+    ask_yes_no "  Set up fingerprint auth for sudo/polkit (only if this machine has a sensor)?" default_no
+    if [[ "$REPLY" == "y" ]]; then SETUP_FINGERPRINT=1; else SETUP_FINGERPRINT=0; fi
+  fi
+
   echo ""
   echo "Selections:"
   echo "  AUR packages:     $([[ "${SKIP_AUR:-0}" == "1" ]] && echo no || echo yes)"
@@ -128,6 +135,7 @@ prompt_options() {
     echo "  Dotfiles repo:    $DOTFILES_REPO"
   fi
   echo "  Hardware extras:  ${INSTALL_HARDWARE:-none}"
+  echo "  Fingerprint:      $([[ "${SETUP_FINGERPRINT:-0}" == "1" ]] && echo yes || echo no)"
   echo ""
 
   if [[ -t 0 ]]; then
@@ -379,6 +387,20 @@ fi
 echo "ssh-key: finished"
 
 # ---------------------------------------------------------------------------
+# Fingerprint (optional; enrolls a finger — needs the sensor and you present).
+# The helper detects the sensor and configures PAM (sudo, polkit); it exits
+# cleanly if there is no sensor.
+# ---------------------------------------------------------------------------
+if [[ "${SETUP_FINGERPRINT:-0}" == "1" ]]; then
+  echo "fingerprint: started"
+  if [[ -f "$SCRIPT_DIR/config/fingerprint-setup.sh" ]]; then
+    run_as_user bash "$SCRIPT_DIR/config/fingerprint-setup.sh" \
+      || echo "fingerprint: not completed (no sensor, or enrollment cancelled)"
+  fi
+  echo "fingerprint: finished"
+fi
+
+# ---------------------------------------------------------------------------
 echo ""
 echo "=== Done ==="
 echo "Next:"
@@ -388,5 +410,6 @@ echo "  3. Wi-Fi: Super+Ctrl+W or: impala"
 echo "  4. Tailscale: sudo tailscale up"
 echo "  5. if docker group was added: log out/in once"
 echo ""
-echo "Hardware later:  INSTALL_HARDWARE=amd|macbook ./setup.sh  (or re-run and choose at prompt)"
+echo "Hardware later:     INSTALL_HARDWARE=amd|macbook ./setup.sh  (or re-run and choose at prompt)"
+echo "Fingerprint later:  bash $SCRIPT_DIR/config/fingerprint-setup.sh  (if the machine has a sensor)"
 echo "Dotfiles only:   $DOTFILES_DIR/install.sh"

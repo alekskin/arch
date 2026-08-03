@@ -38,7 +38,10 @@ When you run `./setup.sh` in a terminal it asks:
    - `1) none` (default)
    - `2) macbook` — Broadcom Wi‑Fi (`broadcom-wl`)
    - `3) amd` — AMD GPU stack (`vulkan-radeon`, VA-API, `amdgpu`, `amd-ucode`)
-4. Confirm and continue
+4. **Fingerprint** auth for sudo/polkit? **[y/N]** — only say yes on a machine
+   with a sensor; it enrolls a finger (needs you present). Falls through to
+   password, so it can't lock you out.
+5. Confirm and continue
 
 Defaults are the usual full install (AUR + dotfiles, no hardware extras).
 
@@ -54,6 +57,7 @@ Env vars skip prompts for those choices:
 | `INSTALL_HARDWARE=amd` | AMD GPU/CPU packages |
 | `SKIP_DOTFILES=1` | Packages/services only |
 | `SKIP_AUR=1` | Skip yay + AUR |
+| `SETUP_FINGERPRINT=1` | Enroll + wire fingerprint (needs a sensor) |
 
 Example:
 
@@ -69,6 +73,8 @@ SKIP_AUR=1 INSTALL_HARDWARE=macbook ./setup.sh
 4. Systemd: logind power-key, **systemd-resolved**, **iwd**, **bluetooth**, **sddm**, **docker**, **tailscaled**, **power-profiles-daemon**
 5. Clone/stow **dotfiles** via `dotfiles/install.sh`
 6. `xdg-user-dirs-update` + MIME defaults (`config/mimetypes.sh`)
+7. Generate an SSH key at `~/.ssh/id_github` if missing
+8. Optional: **fingerprint** enrollment + PAM (`config/fingerprint-setup.sh`)
 
 ## Repo layout
 
