@@ -25,7 +25,7 @@ cd ~/arch
 sudo reboot
 ```
 
-At **SDDM**, pick session **Sway**.
+At the **SDDM** login (minimal theme), pick session **Sway** and log in.
 
 ### Interactive prompts
 

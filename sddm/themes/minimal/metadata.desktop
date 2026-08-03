@@ -1,0 +1,10 @@
+[SddmGreeterTheme]
+Name=minimal
+Description=Minimal login: username, password, power controls
+Author=aleks
+Type=sddm-theme
+Version=1.0
+MainScript=Main.qml
+# Use the Qt6 greeter (sddm-greeter-qt6). Without this, SDDM defaults to Qt5
+# and launches /usr/bin/sddm-greeter, which fails (no qt5-declarative).
+QtVersion=6

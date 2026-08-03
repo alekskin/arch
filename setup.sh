@@ -273,6 +273,13 @@ sudo systemctl enable --now bluetooth 2>/dev/null || true
 echo "bluetooth: finished"
 
 echo "sddm: started"
+sudo mkdir -p /etc/sddm.conf.d
+sudo cp ./sddm/sddm.conf.d/10-theme.conf /etc/sddm.conf.d/10-theme.conf
+# Install our minimal theme.
+sudo mkdir -p /usr/share/sddm/themes/minimal
+sudo cp -r ./sddm/themes/minimal/. /usr/share/sddm/themes/minimal/
+# Make sddm the display manager (replaces greetd if it was ever enabled).
+sudo systemctl disable greetd 2>/dev/null || true
 sudo systemctl enable sddm
 echo "sddm: finished"
 
@@ -376,7 +383,7 @@ echo ""
 echo "=== Done ==="
 echo "Next:"
 echo "  1. reboot"
-echo "  2. at SDDM, choose session: Sway"
+echo "  2. at the SDDM login (minimal theme), pick session Sway and log in"
 echo "  3. Wi-Fi: Super+Ctrl+W or: impala"
 echo "  4. Tailscale: sudo tailscale up"
 echo "  5. if docker group was added: log out/in once"

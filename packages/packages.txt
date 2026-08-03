@@ -11,7 +11,10 @@ vulkan-intel
 intel-media-driver
 
 # --- Session / compositor ---
+# Login greeter: SDDM with our own minimal QML theme (sddm/themes/minimal/,
+# plain QtQuick from qt6-declarative). Applied by setup.sh via sddm/sddm.conf.d.
 sddm
+qt6-declarative
 sway
 swaybg
 swayidle
