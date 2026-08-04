@@ -22,7 +22,7 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 cd "$SCRIPT_DIR"
 
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles}"
-DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/BabkinAleksandr/dotfiles.git}"
+DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/alekskin/dotfiles.git}"
 
 # ---------------------------------------------------------------------------
 # Interactive options (skipped if env already set, or stdin is not a TTY)

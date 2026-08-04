@@ -1,6 +1,6 @@
 # Arch → sway desktop bootstrap
 
-Turn a **minimal Arch** install into this machine’s sway desktop (packages, services, and [dotfiles](https://github.com/BabkinAleksandr/dotfiles)).
+Turn a **minimal Arch** install into this machine’s sway desktop (packages, services, and [dotfiles](https://github.com/alekskin/dotfiles)).
 
 ## What you need first
 
@@ -17,8 +17,8 @@ This repo does **not** replace partitioning, bootloader, or creating the user.
 ```bash
 # As your user
 sudo pacman -Syu --needed git
-git clone https://github.com/BabkinAleksandr/arch.git ~/arch
-git clone https://github.com/BabkinAleksandr/dotfiles.git ~/dotfiles   # optional; setup can clone it
+git clone https://github.com/alekskin/arch.git ~/arch
+git clone https://github.com/alekskin/dotfiles.git ~/dotfiles   # optional; setup can clone it
 
 cd ~/arch
 ./setup.sh
