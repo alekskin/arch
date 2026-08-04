@@ -1,0 +1,9 @@
+# Wired DHCP, installed to /etc/systemd/network/20-wired.network by setup.sh.
+# Wi-Fi is handled by iwd (EnableNetworkConfiguration=true in iwd/main.conf);
+# this covers Ethernet (including VM virtio NICs), which iwd does not touch.
+# systemd-networkd ships with systemd, so this needs no extra package.
+[Match]
+Name=en* eth*
+
+[Network]
+DHCP=yes

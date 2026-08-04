@@ -6,20 +6,39 @@ Turn a **minimal Arch** install into this machine’s sway desktop (packages, se
 
 From `archinstall` or a manual install:
 
-1. Bootable Arch system with a **normal user** + **sudo**
-2. **Network** working (Ethernet, or Wi‑Fi already configured for the install)
-3. `git` available (`pacman -S git`)
+1. Bootable Arch system
+2. A **normal user** (archinstall: *User account* → add a superuser)
 
 This repo does **not** replace partitioning, bootloader, or creating the user.
+Networking is handled for you by stage 1 below.
 
-## Quick start (bare metal)
+## Install (two stages)
+
+A fresh install has no networking — the live ISO's connection isn't carried
+over — so this runs in two parts.
+
+### Stage 1 — as root, right after install
+
+Brings the machine online (wired DHCP, or helps you connect Wi‑Fi) and
+installs `sudo` + `git`.
 
 ```bash
-# As your user
-sudo pacman -Syu --needed git
-git clone https://github.com/alekskin/arch.git ~/arch
-git clone https://github.com/alekskin/dotfiles.git ~/dotfiles   # optional; setup can clone it
+# as root, with the repo on the machine
+./bootstrap.sh
+```
 
+Getting the repo there with no network yet: clone it from the **live ISO**
+(which does have network) before rebooting —
+`git clone https://github.com/alekskin/arch.git /mnt/root/arch` — or plug in
+Ethernet and `pacman -Sy git` first.
+
+### Stage 2 — as your user, after logging in
+
+Installs every package, service, and the desktop. Must **not** run as root.
+
+```bash
+su - <username>
+git clone https://github.com/alekskin/arch.git ~/arch
 cd ~/arch
 ./setup.sh
 sudo reboot

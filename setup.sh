@@ -21,6 +21,16 @@ echo "=== Arch setup (bare → sway desktop) ==="
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 cd "$SCRIPT_DIR"
 
+# Stage 2 sets up a desktop *for a user*: dotfiles stow into $HOME, the SSH key
+# and MIME defaults are per-user, and AUR builds use makepkg, which refuses to
+# run as root. Stop now rather than half-installing into /root.
+if [[ $EUID -eq 0 && -z "${SUDO_USER:-}" ]]; then
+  echo "Run setup.sh as your normal user, not as root." >&2
+  echo "(makepkg/AUR won't run as root, and dotfiles + SSH keys would land in /root.)" >&2
+  echo "No network or no user yet? Run ./bootstrap.sh as root first." >&2
+  exit 1
+fi
+
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles}"
 DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/alekskin/dotfiles.git}"
 
@@ -275,6 +285,14 @@ sudo cp ./iwd/main.conf /etc/iwd/main.conf
 sudo systemctl enable --now iwd
 sudo systemctl disable --now NetworkManager wpa_supplicant 2>/dev/null || true
 echo "iwd: finished"
+
+# Wired DHCP. iwd only manages Wi-Fi, and NetworkManager was just disabled, so
+# without this an Ethernet-only machine (or a VM) has no network after reboot.
+echo "wired: started"
+sudo mkdir -p /etc/systemd/network
+sudo cp ./systemd/20-wired.network /etc/systemd/network/20-wired.network
+sudo systemctl enable --now systemd-networkd
+echo "wired: finished"
 
 echo "bluetooth: started"
 sudo systemctl enable --now bluetooth 2>/dev/null || true
