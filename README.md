@@ -27,10 +27,26 @@ installs `sudo` + `git`.
 ./bootstrap.sh
 ```
 
-Getting the repo there with no network yet: clone it from the **live ISO**
-(which does have network) before rebooting —
-`git clone https://github.com/alekskin/arch.git /mnt/root/arch` — or plug in
-Ethernet and `pacman -Sy git` first.
+#### Getting the repo onto the machine with no network
+
+Chicken-and-egg: cloning needs network, and stage 1 is what sets network up.
+Pick whichever applies:
+
+- **Clone from the live ISO before rebooting** (the ISO has network):
+  `git clone https://github.com/alekskin/arch.git /mnt/root/arch`
+- **Wired / VM:** plug in Ethernet, then `pacman -Sy git` and clone normally.
+- **Stuck without either:** bring wired DHCP up by hand — all of this is built
+  into systemd, so it downloads nothing — then clone:
+
+  ```bash
+  printf '[Match]\nName=en* eth*\n\n[Network]\nDHCP=yes\n' \
+    > /etc/systemd/network/20-wired.network
+  systemctl enable --now systemd-networkd systemd-resolved
+  ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+  pacman -Sy git
+  ```
+
+  (Running `bootstrap.sh` afterwards is still fine — it is idempotent.)
 
 ### Stage 2 — as your user, after logging in
 
