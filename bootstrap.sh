@@ -42,7 +42,8 @@ fi
 # /run from the live ISO, so the host's systemd runtime dir is visible inside.
 # Compare our root against PID 1's root instead (what systemd-detect-virt does).
 IN_CHROOT=0
-if [[ "$(systemd-detect-virt -r 2>/dev/null || true)" == "chroot" ]]; then
+# `systemd-detect-virt -r` prints nothing — it answers through its exit status.
+if systemd-detect-virt -r 2>/dev/null; then
   IN_CHROOT=1
 elif [[ "$(stat -Lc %d:%i / 2>/dev/null)" != "$(stat -Lc %d:%i /proc/1/root/. 2>/dev/null)" ]]; then
   IN_CHROOT=1
