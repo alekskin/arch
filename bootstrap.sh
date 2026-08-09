@@ -81,12 +81,32 @@ read_pkg_list() {
 
 RESOLV_STUB=/run/systemd/resolve/stub-resolv.conf
 
+unmount_resolv_conf() {
+  # arch-chroot bind-mounts the ISO's /etc/resolv.conf into the target so that
+  # pacman can resolve names in here. That makes the path a mount point: it
+  # cannot be removed or replaced ("Device or resource busy"), and whatever
+  # arch-chroot created underneath — usually an empty regular file — is what
+  # the installed system actually boots with. Drop the mount so the real file
+  # underneath can be fixed. Only ever called once downloads are done.
+  if mountpoint -q /etc/resolv.conf 2>/dev/null; then
+    echo "dns: /etc/resolv.conf is bind-mounted by arch-chroot, unmounting it"
+    umount /etc/resolv.conf || return 1
+  fi
+  return 0
+}
+
 link_resolv_conf() {
   # `ln -sf` errors with "are the same file" when /etc/resolv.conf is already
   # this symlink and the target exists — which is the common case, and under
   # `set -e` that would kill the script for doing nothing wrong. Replace it
   # only when it isn't already what we want.
   if [[ "$(readlink /etc/resolv.conf 2>/dev/null)" == "$RESOLV_STUB" ]]; then
+    return 0
+  fi
+  if ! unmount_resolv_conf; then
+    echo "dns: could not unmount /etc/resolv.conf — fix it from the ISO after" >&2
+    echo "dns: exiting the chroot, or DNS will not work after the reboot:" >&2
+    echo "dns:   ln -sf $RESOLV_STUB /mnt/etc/resolv.conf" >&2
     return 0
   fi
   rm -f /etc/resolv.conf
@@ -132,6 +152,9 @@ if ((IN_CHROOT)); then
   # dangling stub symlink, so replace it for the duration and restore at the end.
   if ! getent hosts archlinux.org >/dev/null 2>&1; then
     echo "network: chroot has no DNS, using a temporary resolv.conf"
+    # Unmount first if arch-chroot bind-mounted one here: writing through the
+    # mount would edit the live ISO's own resolv.conf, and rm would just fail.
+    unmount_resolv_conf || true
     rm -f /etc/resolv.conf
     printf 'nameserver 9.9.9.9\nnameserver 1.1.1.1\n' > /etc/resolv.conf
   fi
