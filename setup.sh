@@ -24,14 +24,88 @@ cd "$SCRIPT_DIR"
 # Stage 2 sets up a desktop *for a user*: dotfiles stow into $HOME, the SSH key
 # and MIME defaults are per-user, and AUR builds use makepkg, which refuses to
 # run as root. Stop now rather than half-installing into /root.
-if [[ $EUID -eq 0 && -z "${SUDO_USER:-}" ]]; then
+#
+# The exception is bootstrap.sh driving this from the live ISO: there it runs as
+# root (often in a chroot) on behalf of SETUP_USER, so that the whole install
+# completes while the ISO's network is still up. Every per-user action is
+# dropped to that user below, so nothing lands in /root either way.
+if [[ "${SETUP_AS_ROOT:-0}" == "1" ]]; then
+  if [[ $EUID -ne 0 ]]; then
+    echo "SETUP_AS_ROOT=1 but this is not running as root." >&2
+    exit 1
+  fi
+  if [[ -z "${SETUP_USER:-}" ]]; then
+    echo "SETUP_AS_ROOT=1 requires SETUP_USER=<username>." >&2
+    exit 1
+  fi
+  if ! id "$SETUP_USER" &>/dev/null; then
+    echo "SETUP_USER=$SETUP_USER does not exist." >&2
+    exit 1
+  fi
+  SETUP_HOME=$(getent passwd "$SETUP_USER" | cut -d: -f6)
+  SETUP_HOME=${SETUP_HOME:-/home/$SETUP_USER}
+  echo "mode: running as root on behalf of $SETUP_USER (home $SETUP_HOME)"
+
+  # Stand in for sudo, which is pointless as root and unusable non-interactively
+  # in a chroot. `sudo -u <user> …` becomes runuser with that user's HOME —
+  # without it, makepkg and git would write into /root.
+  sudo() {
+    local u=""
+    while (($#)); do
+      case "$1" in
+        -u) u=$2; shift 2 ;;
+        --preserve-env*|-E|-H) shift ;;
+        --) shift; break ;;
+        -*) shift ;;
+        *) break ;;
+      esac
+    done
+    if [[ -n "$u" && "$u" != "root" ]]; then
+      local h
+      h=$(getent passwd "$u" | cut -d: -f6)
+      runuser -u "$u" -- env HOME="${h:-/home/$u}" USER="$u" LOGNAME="$u" "$@"
+    else
+      "$@"
+    fi
+  }
+
+  # In a chroot there is no PID 1: enabling units is fine (it writes symlinks),
+  # but starting/restarting/querying them is not. --root=/ keeps systemctl from
+  # asking the *host's* systemd over the bind-mounted /run.
+  if [[ "${SETUP_IN_CHROOT:-0}" == "1" ]]; then
+    systemctl() {
+      local cmd=${1:-}
+      case "$cmd" in
+        enable|disable|mask|unmask|preset)
+          shift
+          local args=()
+          local a
+          for a in "$@"; do
+            [[ "$a" == "--now" ]] && continue
+            args+=("$a")
+          done
+          command systemctl --root=/ "$cmd" "${args[@]}"
+          ;;
+        start|stop|restart|reload|daemon-reload)
+          return 0 ;;
+        is-active|is-enabled|is-system-running)
+          return 1 ;;
+        *)
+          command systemctl "$@" ;;
+      esac
+    }
+  fi
+fi
+
+if [[ "${SETUP_AS_ROOT:-0}" != "1" && $EUID -eq 0 && -z "${SUDO_USER:-}" ]]; then
   echo "Run setup.sh as your normal user, not as root." >&2
   echo "(makepkg/AUR won't run as root, and dotfiles + SSH keys would land in /root.)" >&2
   echo "No network or no user yet? Run ./bootstrap.sh as root first." >&2
   exit 1
 fi
 
-DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles}"
+# $HOME is /root in SETUP_AS_ROOT mode, which is not where dotfiles belong.
+DOTFILES_DIR="${DOTFILES_DIR:-${SETUP_HOME:-$HOME}/dotfiles}"
 DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/alekskin/dotfiles.git}"
 
 # ---------------------------------------------------------------------------
@@ -165,6 +239,10 @@ read_pkg_list() {
 }
 
 target_user() {
+  if [[ -n "${SETUP_USER:-}" ]]; then
+    printf '%s' "$SETUP_USER"
+    return 0
+  fi
   local u="${SUDO_USER:-$USER}"
   if [[ "$u" == "root" ]]; then
     u=$(logname 2>/dev/null || true)
@@ -290,7 +368,16 @@ fi
 echo "systemd: started"
 sudo mkdir -p /etc/systemd/logind.conf.d
 sudo cp ./systemd/ignore-power-key.conf /etc/systemd/logind.conf.d/ignore-power-key.conf
-sudo systemctl restart systemd-logind
+# Deliberately NOT `systemctl restart systemd-logind`: that tears down every
+# active login session. Run this script from a desktop and it kills SDDM/Sway
+# out from under you — a black screen and a hard power-off. The drop-in is only
+# about the power key, so it can wait for the next boot.
+if [[ -n "$(loginctl list-sessions --no-legend 2>/dev/null)" ]]; then
+  echo "systemd: power-key setting applies after the next reboot"
+  echo "systemd: (not restarting logind — it would kill your session)"
+else
+  sudo systemctl restart systemd-logind 2>/dev/null || true
+fi
 echo "systemd: finished"
 
 echo "dns: started"
@@ -307,7 +394,14 @@ echo "iwd: started"
 sudo mkdir -p /etc/iwd
 sudo cp ./iwd/main.conf /etc/iwd/main.conf
 sudo systemctl enable --now iwd
-sudo systemctl disable --now NetworkManager 2>/dev/null || true
+# Same care as below: if NetworkManager is what is currently online, stopping it
+# mid-run would cut the AUR downloads off. Disable it for the next boot instead.
+if systemctl is-active --quiet NetworkManager 2>/dev/null; then
+  echo "iwd: NetworkManager is active — disabling it for the next boot only"
+  sudo systemctl disable NetworkManager 2>/dev/null || true
+else
+  sudo systemctl disable --now NetworkManager 2>/dev/null || true
+fi
 # wpa_supplicant is the offline fallback bootstrap.sh installs for Broadcom wl
 # cards, where iwd sometimes will not associate. If it is running, it is very
 # likely the connection this script is using — don't pull it out from under us.
@@ -415,6 +509,12 @@ run_as_user xdg-user-dirs-update 2>/dev/null || xdg-user-dirs-update 2>/dev/null
 echo "user-dirs: finished"
 
 echo "mimetypes: started"
+# xdg-mime writes ~/.config/mimeapps.list but will not create the directory —
+# on a fresh account it does not exist, and every default fails silently.
+u=$(target_user)
+uhome=$(getent passwd "$u" 2>/dev/null | cut -d: -f6)
+uhome=${uhome:-$HOME}
+run_as_user mkdir -p "$uhome/.config" "$uhome/.local/share"
 if [[ -f "$SCRIPT_DIR/config/mimetypes.sh" ]]; then
   run_as_user bash "$SCRIPT_DIR/config/mimetypes.sh" || bash "$SCRIPT_DIR/config/mimetypes.sh"
 fi

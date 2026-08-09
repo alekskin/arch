@@ -325,21 +325,6 @@ enable_unit_optional usbmuxd
 echo "services: systemd-networkd, systemd-resolved, iwd enabled"
 
 # ---------------------------------------------------------------------------
-# Pre-download stage 2, so setup.sh can finish even with no network
-# ---------------------------------------------------------------------------
-if [[ "${SKIP_CACHE:-0}" != "1" ]]; then
-  echo "cache: downloading stage 2 packages into /var/cache/pacman/pkg"
-  echo "cache: (several minutes / ~2-3 GB; SKIP_CACHE=1 to skip)"
-  mapfile -t stage2_packages < <(read_pkg_list "$SCRIPT_DIR/packages/packages.txt")
-  # -w downloads without installing; failures here are not fatal, the cache is
-  # an optimisation and stage 2 will simply fetch what is missing.
-  pacman -Syuw --noconfirm || echo "cache: upgrade download failed (non-fatal)" >&2
-  pacman -Sw --needed --noconfirm "${stage2_packages[@]}" \
-    || echo "cache: package download failed (non-fatal)" >&2
-  echo "cache: finished"
-fi
-
-# ---------------------------------------------------------------------------
 # Put the repo where stage 2 can actually reach it.
 #
 # Cloning to /root/arch is the obvious thing to do from the ISO, but /root is
@@ -362,29 +347,96 @@ if [[ -n "$user_home" && "$SCRIPT_DIR" != "$user_home"/* ]]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Stage 2, right here — the whole point.
+#
+# Everything that needs a network (every package, the AUR builds, the dotfiles
+# clone) runs now, while the ISO is still online, instead of after a reboot onto
+# a machine that may not be able to reach anything. setup.sh does the work; it
+# runs as root on behalf of the user, dropping to them for anything per-user.
+#
+# What is deliberately NOT done here: fingerprint enrollment, which needs a
+# running fprintd and your finger on the sensor. That stays a post-boot step.
+# ---------------------------------------------------------------------------
+if [[ "${SKIP_STAGE2:-0}" == "1" ]]; then
+  echo "stage2: skipped (SKIP_STAGE2=1)"
+  # Without stage 2 the packages are at least worth having on disk, so a later
+  # offline run of setup.sh can still finish.
+  if [[ "${SKIP_CACHE:-0}" != "1" ]]; then
+    echo "cache: downloading stage 2 packages into /var/cache/pacman/pkg"
+    mapfile -t stage2_packages < <(read_pkg_list "$SCRIPT_DIR/packages/packages.txt")
+    pacman -Syuw --noconfirm || echo "cache: upgrade download failed (non-fatal)" >&2
+    pacman -Sw --needed --noconfirm "${stage2_packages[@]}" \
+      || echo "cache: package download failed (non-fatal)" >&2
+    echo "cache: finished"
+  fi
+else
+  # makepkg and yay refuse to run as root and call sudo themselves, which would
+  # sit forever on a password prompt in here. Grant this one user a temporary
+  # NOPASSWD rule and remove it no matter how the script ends.
+  SUDOERS_TMP=/etc/sudoers.d/00-arch-bootstrap-temporary
+  cleanup_sudoers() {
+    if [[ -f "$SUDOERS_TMP" ]]; then
+      rm -f "$SUDOERS_TMP"
+      echo "stage2: removed temporary sudoers rule"
+    fi
+  }
+  trap cleanup_sudoers EXIT INT TERM
+
+  mkdir -p /etc/sudoers.d
+  chmod 750 /etc/sudoers.d
+  printf '%s ALL=(ALL:ALL) NOPASSWD: ALL\n' "$existing_user" > "$SUDOERS_TMP"
+  chmod 440 "$SUDOERS_TMP"
+
+  echo ""
+  echo "=== Stage 2 (packages + desktop), driven from stage 1 ==="
+  SETUP_AS_ROOT=1 \
+  SETUP_USER="$existing_user" \
+  SETUP_IN_CHROOT="$IN_CHROOT" \
+  INSTALL_HARDWARE="${INSTALL_HARDWARE:-none}" \
+  SETUP_FINGERPRINT=0 \
+    bash "$STAGE2_DIR/setup.sh"
+
+  cleanup_sudoers
+  trap - EXIT INT TERM
+fi
+
+# ---------------------------------------------------------------------------
 # Hand DNS back to systemd-resolved for the real boot.
+# NB: this unmounts the resolv.conf arch-chroot bind-mounted in, so it must come
+# after everything that needs to resolve a name.
 # ---------------------------------------------------------------------------
 link_resolv_conf
 
 # ---------------------------------------------------------------------------
 echo ""
-echo "=== Stage 1 done ==="
-if ((IN_CHROOT)); then
-  echo "Networking is configured and will come up on the next boot:"
-  echo "  - Ethernet / USB tethering: DHCP automatically"
-  echo "  - Wi-Fi: iwctl station wlan0 connect <SSID>"
-  if [[ "$INSTALL_HARDWARE" == "macbook" ]]; then
-    echo "  - Broadcom wl driver installed for this MacBook's Wi-Fi"
-  fi
+if [[ "${SKIP_STAGE2:-0}" == "1" ]]; then
+  echo "=== Stage 1 done (stage 2 skipped) ==="
   echo ""
-  echo "Exit the chroot and reboot, then:"
+  echo "  su - $existing_user"
+  echo "  cd $STAGE2_DIR && ./setup.sh"
 else
-  echo "This machine is online. Now:"
+  echo "=== Install complete ==="
+  echo ""
+  echo "Networking, packages, desktop, AUR and dotfiles are all in place."
+  if ((IN_CHROOT)); then
+    echo "Exit the chroot and reboot; SDDM should come up — pick Sway and log in."
+  else
+    echo "Reboot; SDDM should come up — pick Sway and log in."
+  fi
 fi
 echo ""
-echo "  su - $existing_user"
-echo "  cd $STAGE2_DIR && ./setup.sh"
+echo "Networking after the reboot:"
+echo "  - Ethernet / USB tethering: DHCP automatically"
+echo "  - Wi-Fi: iwctl station wlan0 connect <SSID>"
+if [[ "$INSTALL_HARDWARE" == "macbook" ]]; then
+  echo "  - Broadcom wl driver installed for this MacBook's Wi-Fi"
+fi
 echo ""
-echo "Tethering after reboot: plug the phone in, then enable USB tethering on"
-echo "it (iPhone: unlock and tap 'Trust This Computer'). DHCP is automatic."
+echo "Left for after the reboot (they need a running system):"
+echo "  - fingerprint:  cd $STAGE2_DIR && SETUP_FINGERPRINT=1 ./setup.sh"
+echo "  - docker group: log out and back in once"
+echo "  - tailscale:    sudo tailscale up"
+echo ""
+echo "Tethering: plug the phone in, then enable USB tethering on it"
+echo "(iPhone: unlock and tap 'Trust This Computer'). DHCP is automatic."
 echo ""

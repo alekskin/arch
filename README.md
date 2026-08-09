@@ -12,44 +12,70 @@ From `archinstall` or a manual install:
 This repo does **not** replace partitioning, bootloader, or creating the user.
 Networking is handled for you by stage 1 below.
 
-## Install (two stages)
+## Install — one command, from the live ISO
 
-A fresh install has no networking — the live ISO's connection isn't carried
-over, and the drivers/daemons that made it work on the ISO aren't in a bare
-`pacstrap` install either — so this runs in two parts.
-
-### Stage 1 — as root, from the live ISO (recommended)
-
-Run it **before the first reboot, while the ISO is still online**. That is the
-only moment when the machine can download the things it needs in order to get
-online by itself later: the Broadcom Wi-Fi driver, `usbmuxd` for iPhone
-tethering, `iwd`, `sudo`, `git`.
+A fresh install has no networking. The live ISO's connection isn't carried over,
+and the drivers and daemons that made it work there (the Broadcom Wi-Fi driver,
+`usbmuxd` for iPhone tethering) aren't in a bare `pacstrap` install either. So
+rather than reboot and hope the machine can reach the internet, **do the entire
+install while the ISO is still online**:
 
 ```bash
-# in the live ISO, network up, system already installed to /mnt
+# in the live ISO, network up (tethering is fine), system installed to /mnt
 pacman -Sy git
 git clone https://github.com/alekskin/arch.git /mnt/root/arch
 arch-chroot /mnt /root/arch/bootstrap.sh
 reboot
 ```
 
-It detects the chroot: units are enabled for the next boot rather than started,
-and the network is taken from the ISO. It also pre-downloads every stage 2
-package into `/var/cache/pacman/pkg`, so `setup.sh` can finish even if the
-machine ends up offline (`SKIP_CACHE=1` to skip that, `INSTALL_HARDWARE=…` to
-override Wi-Fi hardware detection).
+That single run does networking, drivers, every package, the AUR builds and the
+dotfiles — you reboot straight into SDDM with a working desktop. Nothing that
+needs a network is left for after the reboot.
 
-### Stage 1 — alternative: on the booted system
+`bootstrap.sh` detects that it's in a chroot: units are enabled for the next
+boot rather than started, and the network comes from the ISO. Under the hood it
+runs `setup.sh` for you (see *Stages*, below).
 
-Same script, run as root on a machine that already has *some* way online. It
-brings up wired/tether DHCP, or walks you through `iwctl` for Wi-Fi.
+Already ran `archinstall`'s "chroot into the installation?" prompt? You're
+inside already — skip `arch-chroot` and run `/root/arch/bootstrap.sh` directly,
+after `pacman -Sy git` (a base install has no git).
+
+### On an already-booted system
+
+The same script works as root on a machine that's online some other way:
 
 ```bash
 ./bootstrap.sh
 ```
 
-If it can't reach the network and `iwd`/the Wi-Fi driver aren't installed,
-there is nothing it can do offline — boot the ISO and use the chroot flow above.
+If it can't reach the network and `iwd`/the Wi-Fi driver aren't installed, there
+is nothing it can do offline — boot the ISO and use the flow above.
+
+### Stages
+
+| Stage | Who | What | When |
+|-------|-----|------|------|
+| `bootstrap.sh` | root | network, Wi-Fi driver, tethering, then all of stage 2 | from the ISO, before first boot |
+| `setup.sh` | your user | packages, AUR, services, desktop, dotfiles | driven by stage 1; re-runnable later |
+
+`setup.sh` still works standalone as your user — it's idempotent, so re-run it
+any time to top things up. Env vars for stage 1:
+
+| Variable | Meaning |
+|----------|---------|
+| `SKIP_STAGE2=1` | stage 1 only; download stage 2's packages to the cache instead |
+| `SKIP_CACHE=1` | with `SKIP_STAGE2=1`, skip the download too |
+| `INSTALL_HARDWARE=…` | override Wi-Fi hardware auto-detection |
+
+### Left for after the reboot
+
+Only things that genuinely need a running system:
+
+```bash
+cd ~/arch && SETUP_FINGERPRINT=1 ./setup.sh   # enrolls a finger; needs the sensor
+sudo tailscale up                             # needs the daemon running
+# log out and back in once, for the docker group
+```
 
 #### Getting the repo onto the machine with no network
 
@@ -88,19 +114,19 @@ sudo systemctl disable --now iwd
 sudo systemctl enable --now wpa_supplicant@wlan0 dhcpcd
 ```
 
-### Stage 2 — as your user, after logging in
+### Running stage 2 by itself
 
-Installs every package, service, and the desktop. Must **not** run as root.
+Stage 1 already ran it, so this is only for re-runs and top-ups (new packages in
+the list, dotfiles changes, hardware extras, fingerprint). It must **not** run
+as root — dotfiles and the SSH key belong in a real `$HOME`, and makepkg refuses.
 
-Stage 1 leaves a copy of this repo at `~/arch`, owned by your user — cloning it
-to `/root/arch` from the ISO is the natural thing to do, but `/root` is mode
-750, so your user could not read it there.
+Stage 1 leaves a copy of this repo at `~/arch`, owned by your user: cloning to
+`/root/arch` from the ISO is the natural thing to do, but `/root` is mode 750,
+so your user could not read it there.
 
 ```bash
-su - <username>
-cd ~/arch          # already there, courtesy of bootstrap.sh
+cd ~/arch
 ./setup.sh
-sudo reboot
 ```
 
 At the **SDDM** login (minimal theme), pick session **Sway** and log in.
