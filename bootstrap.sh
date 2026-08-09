@@ -79,6 +79,20 @@ read_pkg_list() {
   sed -e 's/[[:space:]]*#.*//' -e '/^[[:space:]]*$/d' "$1"
 }
 
+RESOLV_STUB=/run/systemd/resolve/stub-resolv.conf
+
+link_resolv_conf() {
+  # `ln -sf` errors with "are the same file" when /etc/resolv.conf is already
+  # this symlink and the target exists — which is the common case, and under
+  # `set -e` that would kill the script for doing nothing wrong. Replace it
+  # only when it isn't already what we want.
+  if [[ "$(readlink /etc/resolv.conf 2>/dev/null)" == "$RESOLV_STUB" ]]; then
+    return 0
+  fi
+  rm -f /etc/resolv.conf
+  ln -s "$RESOLV_STUB" /etc/resolv.conf
+}
+
 # ---------------------------------------------------------------------------
 # A normal user must already exist — archinstall creates one, and stage 2 runs
 # as that user. Creating users is not this script's job.
@@ -132,7 +146,7 @@ if ((IN_CHROOT)); then
   fi
 else
   # Booted system: bring wired/tether DHCP up and wait for a lease.
-  ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+  link_resolv_conf
   for _ in {1..10}; do
     have_network && break
     sleep 1
@@ -327,7 +341,7 @@ fi
 # ---------------------------------------------------------------------------
 # Hand DNS back to systemd-resolved for the real boot.
 # ---------------------------------------------------------------------------
-ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+link_resolv_conf
 
 # ---------------------------------------------------------------------------
 echo ""

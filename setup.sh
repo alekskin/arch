@@ -295,7 +295,12 @@ echo "systemd: finished"
 
 echo "dns: started"
 sudo systemctl enable --now systemd-resolved
-sudo ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+# Not `ln -sf`: that errors with "are the same file" when the symlink is
+# already correct, which is the normal case after bootstrap.sh ran.
+if [[ "$(readlink /etc/resolv.conf 2>/dev/null)" != "/run/systemd/resolve/stub-resolv.conf" ]]; then
+  sudo rm -f /etc/resolv.conf
+  sudo ln -s /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+fi
 echo "dns: finished"
 
 echo "iwd: started"
