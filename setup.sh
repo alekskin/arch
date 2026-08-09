@@ -113,7 +113,7 @@ prompt_options() {
     echo ""
     echo "  Hardware extras:"
     echo "    1) none (default)"
-    echo "    2) macbook  (broadcom-wl + linux-headers)"
+    echo "    2) macbook  (broadcom-wl-dkms + headers; usually already done by bootstrap.sh)"
     echo "    3) amd      (vulkan-radeon, amdgpu, firmware, amd-ucode)"
     if [[ -t 0 ]]; then
       read -r -p "  Choice [1]: " hw || hw=""
@@ -192,8 +192,27 @@ if ((${#packages[@]} == 0)); then
   exit 1
 fi
 
-# Full upgrade path (Arch-recommended); then ensure our set is present
-sudo pacman -Syu --noconfirm
+# Offline is a supported case: bootstrap.sh pre-downloads this whole set into
+# /var/cache/pacman/pkg while the live ISO still has a connection. Refreshing
+# the databases or upgrading needs a network, so skip both and install straight
+# from the cache — the sync dbs are already there from stage 1.
+have_network() {
+  ping -c1 -W2 9.9.9.9 &>/dev/null || ping -c1 -W2 archlinux.org &>/dev/null
+}
+
+if have_network; then
+  # Full upgrade path (Arch-recommended); then ensure our set is present
+  sudo pacman -Syu --noconfirm
+else
+  echo "packages: no network — installing from the stage 1 package cache" >&2
+  OFFLINE=1
+  # Nothing here can be fetched: yay bootstrap and dotfiles clone both need git
+  # over the network.
+  if [[ "${SKIP_AUR:-0}" != "1" ]]; then
+    echo "packages: AUR needs a network, skipping it" >&2
+    SKIP_AUR=1
+  fi
+fi
 sudo pacman -S --needed --noconfirm "${packages[@]}"
 echo "packages: finished"
 
@@ -283,14 +302,25 @@ echo "iwd: started"
 sudo mkdir -p /etc/iwd
 sudo cp ./iwd/main.conf /etc/iwd/main.conf
 sudo systemctl enable --now iwd
-sudo systemctl disable --now NetworkManager wpa_supplicant 2>/dev/null || true
+sudo systemctl disable --now NetworkManager 2>/dev/null || true
+# wpa_supplicant is the offline fallback bootstrap.sh installs for Broadcom wl
+# cards, where iwd sometimes will not associate. If it is running, it is very
+# likely the connection this script is using — don't pull it out from under us.
+if systemctl is-active --quiet 'wpa_supplicant*'; then
+  echo "iwd: wpa_supplicant is active and left alone (it may be your uplink)"
+  echo "iwd: once Wi-Fi works via iwctl: sudo systemctl disable --now wpa_supplicant"
+else
+  sudo systemctl disable --now wpa_supplicant 2>/dev/null || true
+fi
 echo "iwd: finished"
 
-# Wired DHCP. iwd only manages Wi-Fi, and NetworkManager was just disabled, so
-# without this an Ethernet-only machine (or a VM) has no network after reboot.
+# Wired DHCP + USB tethering. iwd only manages Wi-Fi, and NetworkManager was
+# just disabled, so without this an Ethernet-only machine (or a VM) has no
+# network after reboot.
 echo "wired: started"
 sudo mkdir -p /etc/systemd/network
 sudo cp ./systemd/20-wired.network /etc/systemd/network/20-wired.network
+sudo cp ./systemd/25-tether.network /etc/systemd/network/25-tether.network
 sudo systemctl enable --now systemd-networkd
 echo "wired: finished"
 
@@ -335,6 +365,13 @@ echo "power-profiles: finished"
 if [[ "${SKIP_DOTFILES:-0}" != "1" ]]; then
   echo "dotfiles: started"
   if [[ ! -d "$DOTFILES_DIR/.git" && ! -f "$DOTFILES_DIR/install.sh" ]]; then
+    if [[ "${OFFLINE:-0}" == "1" ]]; then
+      echo "dotfiles: no network and nothing at $DOTFILES_DIR — skipping." >&2
+      echo "dotfiles: get online, then re-run ./setup.sh (or ~/dotfiles/install.sh)." >&2
+      SKIP_DOTFILES=1
+    fi
+  fi
+  if [[ "${SKIP_DOTFILES:-0}" != "1" && ! -d "$DOTFILES_DIR/.git" && ! -f "$DOTFILES_DIR/install.sh" ]]; then
     echo "dotfiles: cloning $DOTFILES_REPO → $DOTFILES_DIR"
     u=$(target_user)
     parent=$(dirname "$DOTFILES_DIR")
@@ -346,7 +383,9 @@ if [[ "${SKIP_DOTFILES:-0}" != "1" ]]; then
     fi
   fi
 
-  if [[ -x "$DOTFILES_DIR/install.sh" ]]; then
+  if [[ "${SKIP_DOTFILES:-0}" == "1" ]]; then
+    : # offline with nothing to stow; already reported above
+  elif [[ -x "$DOTFILES_DIR/install.sh" ]]; then
     echo "dotfiles: running install.sh (stow)"
     if [[ -n "$(target_user)" && "$(target_user)" != "root" ]]; then
       sudo -u "$(target_user)" bash "$DOTFILES_DIR/install.sh"

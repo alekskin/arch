@@ -1,9 +1,15 @@
-# Wired DHCP, installed to /etc/systemd/network/20-wired.network by setup.sh.
+# Wired DHCP, installed to /etc/systemd/network/20-wired.network by
+# bootstrap.sh (and setup.sh).
 # Wi-Fi is handled by iwd (EnableNetworkConfiguration=true in iwd/main.conf);
 # this covers Ethernet (including VM virtio NICs), which iwd does not touch.
+# USB tether links that get an en*-style name (enp0s20u1) are picked up here
+# too; the ones that come up as usb0 are handled by 25-tether.network.
 # systemd-networkd ships with systemd, so this needs no extra package.
 [Match]
-Name=en* eth*
+Name=en* eth* usb*
 
 [Network]
 DHCP=yes
+
+[DHCPv4]
+RouteMetric=100

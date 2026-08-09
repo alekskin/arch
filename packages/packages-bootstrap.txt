@@ -1,0 +1,40 @@
+# Stage 1 (bootstrap.sh) — the offline-critical set.
+#
+# Everything here exists to make the machine reach the internet on its own
+# after the first reboot. It is installed while a network is still available
+# (live ISO / chroot), because none of it can be downloaded later if the only
+# way online is the thing that is missing.
+#
+# Keep this list small: it is the "can't bootstrap without it" set, not a
+# desktop. Everything else belongs in packages.txt (stage 2).
+
+# --- Fetch + privileges for stage 2 ---
+sudo
+git
+
+# --- Wi-Fi (primary backend, matches iwd/main.conf) ---
+iwd
+
+# --- Wi-Fi (escape hatch) ---
+# Installed but NOT enabled. broadcom-wl's wl.ko is not a mac80211 driver and
+# iwd sometimes refuses to associate on it; having these on disk means a
+# fallback is possible without a network:
+#   systemctl disable --now iwd
+#   systemctl enable --now wpa_supplicant@wlan0 dhcpcd
+wpa_supplicant
+dhcpcd
+
+# --- USB tethering from a phone ---
+# iPhone: the ipheth kernel module is not enough — usbmuxd must be present in
+# userspace or the interface never comes up. The live ISO ships it; a fresh
+# pacstrap install does not, which is why tethering "stops working" on reboot.
+usbmuxd
+libimobiledevice
+# Android RNDIS/CDC-NCM needs no userspace, only the networkd match in
+# systemd/25-tether.network.
+# Some USB modems/dongles boot as a CD-ROM until switched:
+usb_modeswitch
+
+# --- Hardware identification (used by bootstrap.sh's Broadcom detection) ---
+pciutils
+usbutils

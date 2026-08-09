@@ -74,6 +74,10 @@ bluez-utils
 bluetui
 impala
 iwd
+# USB tethering from a phone (iPhone needs usbmuxd in userspace, not just the
+# ipheth module); normally installed already by bootstrap.sh
+usbmuxd
+libimobiledevice
 # SSH client + agent (git over SSH; agent runs as a systemd --user service)
 openssh
 # mDNS optional later: avahi nss-mdns

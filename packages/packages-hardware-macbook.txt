@@ -1,6 +1,13 @@
 # Optional — only install on MacBooks / machines with Broadcom STA Wi-Fi.
-# setup.sh: INSTALL_HARDWARE=macbook ./setup.sh
+# bootstrap.sh installs this automatically when it detects a wl-supported
+# Broadcom chip (BCM4360 etc.); it also picks the right *-headers package for
+# the installed kernel, which this static list cannot do.
+#
+# Manually: INSTALL_HARDWARE=macbook ./setup.sh
 # or: sudo pacman -S --needed $(grep -vE '^\s*(#|$)' packages-hardware-macbook.txt)
-
-broadcom-wl
+#
+# -dkms over plain broadcom-wl: the prebuilt package is tied to one kernel
+# version, so the next `pacman -Syu` silently leaves you with no Wi-Fi driver.
+broadcom-wl-dkms
+dkms
 linux-headers

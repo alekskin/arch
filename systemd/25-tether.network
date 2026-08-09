@@ -1,0 +1,16 @@
+# USB tethering (phone as a modem), installed to /etc/systemd/network/ by
+# bootstrap.sh.
+#
+# 20-wired.network matches by name (en*/eth*) and covers tether interfaces that
+# get a predictable name like enp0s20u1. Plenty of them do not — iPhone/ipheth
+# and many Android RNDIS links show up as usb0 — so match the drivers directly.
+#
+# Higher RouteMetric than wired: if both are plugged in, real Ethernet wins.
+[Match]
+Driver=ipheth rndis_host cdc_ether cdc_ncm cdc_mbim cdc_subset
+
+[Network]
+DHCP=yes
+
+[DHCPv4]
+RouteMetric=150
