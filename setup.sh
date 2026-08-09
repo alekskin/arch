@@ -329,6 +329,11 @@ install_yay() {
 
   local tmp
   tmp=$(mktemp -d /tmp/yay-bin.XXXXXX)
+  # mktemp makes it 0700 and owned by whoever runs this script — root, when
+  # bootstrap.sh drives us. The build user must own it, or git cannot even read
+  # the directory (and reports that as "already exists and is not an empty
+  # directory", which is not what is wrong).
+  sudo chown "$build_user" "$tmp"
   sudo -u "$build_user" git clone --depth 1 https://aur.archlinux.org/yay-bin.git "$tmp"
   (cd "$tmp" && sudo -u "$build_user" makepkg -si --noconfirm)
   rm -rf "$tmp"
