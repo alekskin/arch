@@ -131,6 +131,7 @@ lazydocker
 btop
 
 # --- GUIs ---
+chromium
 pinta
 libreoffice-fresh
 mpv
