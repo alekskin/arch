@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pacman -Ss '^broadcom-wl')",
+      "Bash(pacman -Ss '^usbmuxd$')",
+      "Bash(lspci -nn)",
+      "Bash(pacman -Ss '^networkmanager$')",
+      "Bash(grep -n 'OFFLINE\\\\|SKIP_DOTFILES\\\\|git clone \"$DOTFILES_REPO\"' setup.sh)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
+    ]
+  }
+}

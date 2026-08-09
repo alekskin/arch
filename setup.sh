@@ -390,8 +390,17 @@ sudo systemctl enable --now systemd-resolved
 # Not `ln -sf`: that errors with "are the same file" when the symlink is
 # already correct, which is the normal case after bootstrap.sh ran.
 if [[ "$(readlink /etc/resolv.conf 2>/dev/null)" != "/run/systemd/resolve/stub-resolv.conf" ]]; then
-  sudo rm -f /etc/resolv.conf
-  sudo ln -s /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+  if mountpoint -q /etc/resolv.conf 2>/dev/null; then
+    # Inside arch-chroot this is the ISO's resolv.conf, bind-mounted so pacman
+    # can resolve names. It is still in use — bootstrap.sh replaces it at the
+    # very end, once nothing needs DNS any more. Touching it here would either
+    # fail outright or cut the network off mid-install.
+    echo "dns: /etc/resolv.conf is bind-mounted (chroot) — left to bootstrap.sh"
+  elif sudo rm -f /etc/resolv.conf 2>/dev/null; then
+    sudo ln -s /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+  else
+    echo "dns: /etc/resolv.conf is busy, leaving it alone" >&2
+  fi
 fi
 echo "dns: finished"
 
