@@ -88,11 +88,15 @@ unmount_resolv_conf() {
   # arch-chroot created underneath — usually an empty regular file — is what
   # the installed system actually boots with. Drop the mount so the real file
   # underneath can be fixed. Only ever called once downloads are done.
-  if mountpoint -q /etc/resolv.conf 2>/dev/null; then
-    echo "dns: /etc/resolv.conf is bind-mounted by arch-chroot, unmounting it"
-    umount /etc/resolv.conf || return 1
-  fi
-  return 0
+  # Mounts stack: every arch-chroot invocation adds another bind mount on top,
+  # so one umount is not enough after a few re-runs. Peel until it is gone.
+  local i
+  for ((i = 0; i < 20; i++)); do
+    mountpoint -q /etc/resolv.conf 2>/dev/null || return 0
+    [[ $i -eq 0 ]] && echo "dns: /etc/resolv.conf is bind-mounted by arch-chroot, unmounting it"
+    umount /etc/resolv.conf 2>/dev/null || return 1
+  done
+  ! mountpoint -q /etc/resolv.conf 2>/dev/null
 }
 
 link_resolv_conf() {
@@ -103,13 +107,18 @@ link_resolv_conf() {
   if [[ "$(readlink /etc/resolv.conf 2>/dev/null)" == "$RESOLV_STUB" ]]; then
     return 0
   fi
-  if ! unmount_resolv_conf; then
-    echo "dns: could not unmount /etc/resolv.conf — fix it from the ISO after" >&2
-    echo "dns: exiting the chroot, or DNS will not work after the reboot:" >&2
+  # Never fatal: this is the last step, and a warning the user can act on beats
+  # killing the script after everything else has already succeeded.
+  if ! unmount_resolv_conf || ! rm -f /etc/resolv.conf 2>/dev/null; then
+    echo "" >&2
+    echo "dns: could not replace /etc/resolv.conf (it is still busy)." >&2
+    echo "dns: DNS will not work after the reboot until you fix it. After" >&2
+    echo "dns: leaving the chroot, run this from the live ISO:" >&2
     echo "dns:   ln -sf $RESOLV_STUB /mnt/etc/resolv.conf" >&2
+    echo "" >&2
+    RESOLV_CONF_UNFIXED=1
     return 0
   fi
-  rm -f /etc/resolv.conf
   ln -s "$RESOLV_STUB" /etc/resolv.conf
 }
 
@@ -154,9 +163,11 @@ if ((IN_CHROOT)); then
     echo "network: chroot has no DNS, using a temporary resolv.conf"
     # Unmount first if arch-chroot bind-mounted one here: writing through the
     # mount would edit the live ISO's own resolv.conf, and rm would just fail.
-    unmount_resolv_conf || true
-    rm -f /etc/resolv.conf
-    printf 'nameserver 9.9.9.9\nnameserver 1.1.1.1\n' > /etc/resolv.conf
+    if unmount_resolv_conf && rm -f /etc/resolv.conf 2>/dev/null; then
+      printf 'nameserver 9.9.9.9\nnameserver 1.1.1.1\n' > /etc/resolv.conf
+    else
+      echo "network: /etc/resolv.conf is busy, leaving it as is" >&2
+    fi
   fi
   if ! have_network && ! getent hosts archlinux.org >/dev/null 2>&1; then
     echo "" >&2
@@ -440,3 +451,9 @@ echo ""
 echo "Tethering: plug the phone in, then enable USB tethering on it"
 echo "(iPhone: unlock and tap 'Trust This Computer'). DHCP is automatic."
 echo ""
+if [[ "${RESOLV_CONF_UNFIXED:-0}" == "1" ]]; then
+  echo "!! One thing still needs doing, or nothing will resolve after reboot:" >&2
+  echo "!!   exit" >&2
+  echo "!!   ln -sf $RESOLV_STUB /mnt/etc/resolv.conf" >&2
+  echo "" >&2
+fi
