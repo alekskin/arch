@@ -6,8 +6,8 @@ Turn a **minimal Arch** install into this machine’s sway desktop (packages, se
 
 What `bootstrap.sh` gets you after the reboot:
 
-![Sway desktop with waybar](screenshots/desktop.jpg)
-*Bare desktop — waybar on top: workspaces, clock, and the tray (keyboard layout, bluetooth, network, volume, settings, battery).*
+![Sway desktop with the system menu open](screenshots/desktop.png)
+*The system menu (`Super+Escape`) over the desktop — waybar on top: workspaces, clock, and the tray (keyboard layout, bluetooth, network, volume, settings, battery).*
 
 ![btop in alacritty, tiled by sway](screenshots/btop.png)
 *btop in alacritty, with a mako notification for a fresh screenshot.*
