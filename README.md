@@ -2,6 +2,16 @@
 
 Turn a **minimal Arch** install into this machine’s sway desktop (packages, services, and [dotfiles](https://github.com/alekskin/dotfiles)).
 
+## Screenshots
+
+What `bootstrap.sh` gets you after the reboot:
+
+![Sway desktop with waybar](screenshots/desktop.jpg)
+*Bare desktop — waybar on top: workspaces, clock, and the tray (keyboard layout, bluetooth, network, volume, settings, battery).*
+
+![btop in alacritty, tiled by sway](screenshots/btop.png)
+*btop in alacritty, with a mako notification for a fresh screenshot.*
+
 ## What you need first
 
 From `archinstall` or a manual install:
@@ -197,6 +207,7 @@ arch/
   systemd/20-wired.network       # Ethernet DHCP
   systemd/25-tether.network      # USB tethering DHCP
   systemd/ignore-power-key.conf
+  screenshots/                   # README images
   README.md
 ```
 
