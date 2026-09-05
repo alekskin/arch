@@ -116,6 +116,12 @@ Pick whichever applies:
 | USB tethering | DHCP automatically (`25-tether.network` matches `ipheth`/RNDIS/NCM). Plug in, enable tethering on the phone; on iPhone unlock and *Trust This Computer* |
 | Wi-Fi | `iwctl station wlan0 connect <SSID>` |
 
+`systemd-networkd-wait-online` is deliberately left disabled. Enabling networkd
+turns it on as well, and it holds `network-online.target` until a
+networkd-managed link is configured — which on a Wi-Fi-only machine never
+happens, since iwd owns `wlan0`. It would spend its full 120s timeout on every
+boot and delay everything ordered after `multi-user.target`.
+
 If Wi-Fi won't associate on a Broadcom `wl` card (iwd is known to be picky with
 that driver), the fallback is installed but not enabled:
 

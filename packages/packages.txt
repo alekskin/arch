@@ -20,6 +20,8 @@ swaybg
 swayidle
 swaylock
 waybar
+# Qt Quick shell toolkit — battery popup (qs -c battery); more panels later
+quickshell
 mako
 polkit
 polkit-gnome
@@ -28,7 +30,6 @@ xdg-desktop-portal
 xdg-desktop-portal-wlr
 xdg-desktop-portal-gtk
 # On-screen volume/brightness display
-swayosd
 # Day/night gamma (night light)
 wlsunset
 # Power profiles
@@ -129,6 +130,8 @@ fzf
 lazygit
 lazydocker
 btop
+fd
+ripgrep
 
 # --- GUIs ---
 chromium

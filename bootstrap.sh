@@ -75,6 +75,14 @@ enable_unit_optional() {
   enable_unit "$@" 2>/dev/null || true
 }
 
+disable_unit() {
+  if ((IN_CHROOT)); then
+    systemctl --root=/ disable "$@" 2>/dev/null || true
+  else
+    systemctl disable --now "$@" 2>/dev/null || true
+  fi
+}
+
 read_pkg_list() {
   sed -e 's/[[:space:]]*#.*//' -e '/^[[:space:]]*$/d' "$1"
 }
@@ -154,6 +162,16 @@ mkdir -p /etc/systemd/network
 cp "$SCRIPT_DIR/systemd/20-wired.network" /etc/systemd/network/20-wired.network
 cp "$SCRIPT_DIR/systemd/25-tether.network" /etc/systemd/network/25-tether.network
 enable_unit systemd-networkd systemd-resolved
+
+# Enabling systemd-networkd pulls in systemd-networkd-wait-online through its
+# [Install] Also=, and that unit blocks network-online.target until a
+# *networkd-managed* link is configured. On a Wi-Fi-only machine there is never
+# one: iwd owns wlan0 with its own DHCP, and 20-wired/25-tether only match
+# hardware that is not plugged in. It waits the full 120s timeout, and
+# everything ordered after multi-user.target -- docker, power-profiles-daemon,
+# graphical.target -- queues behind it, turning a 4s boot into 2min 4s.
+# Wired and tethering still come up on their own; nothing needs to block on it.
+disable_unit systemd-networkd-wait-online.service
 
 if ((IN_CHROOT)); then
   # The connection belongs to the host ISO. All we need here is working DNS so

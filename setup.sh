@@ -435,6 +435,12 @@ sudo mkdir -p /etc/systemd/network
 sudo cp ./systemd/20-wired.network /etc/systemd/network/20-wired.network
 sudo cp ./systemd/25-tether.network /etc/systemd/network/25-tether.network
 sudo systemctl enable --now systemd-networkd
+# ...but do not let the boot wait on it. Enabling networkd also enables
+# systemd-networkd-wait-online, which holds network-online.target until a
+# networkd-managed link is configured; with iwd owning Wi-Fi and no Ethernet
+# plugged in there is never one, so it burns its full 120s timeout and delays
+# every unit ordered after multi-user.target.
+sudo systemctl disable --now systemd-networkd-wait-online.service 2>/dev/null || true
 echo "wired: finished"
 
 echo "bluetooth: started"
@@ -509,6 +515,14 @@ if [[ "${SKIP_DOTFILES:-0}" != "1" ]]; then
     echo "dotfiles: warning — no install.sh at $DOTFILES_DIR" >&2
   else
     echo "dotfiles: warning — missing $DOTFILES_DIR (set DOTFILES_DIR or DOTFILES_REPO)" >&2
+  fi
+
+  # install.sh only stows into $HOME. A few things have to live outside it —
+  # the polkit rule and helper that let the power-profile buttons touch the CPU
+  # governor — and without them those buttons silently do nothing.
+  if [[ "${SKIP_DOTFILES:-0}" != "1" && -x "$DOTFILES_DIR/system/install-system.sh" ]]; then
+    echo "dotfiles: running system/install-system.sh (root-owned files)"
+    sudo bash "$DOTFILES_DIR/system/install-system.sh"
   fi
   echo "dotfiles: finished"
 else
