@@ -76,6 +76,7 @@ any time to top things up. Env vars for stage 1:
 | `SKIP_STAGE2=1` | stage 1 only; download stage 2's packages to the cache instead |
 | `SKIP_CACHE=1` | with `SKIP_STAGE2=1`, skip the download too |
 | `INSTALL_HARDWARE=…` | override Wi-Fi hardware auto-detection |
+| `WIFI_COUNTRY=XX` | Wi-Fi regulatory country (default: from the timezone); without one, routers on channels 12–13 / 5 GHz DFS are invisible |
 
 ### Left for after the reboot
 

@@ -14,6 +14,11 @@ git
 
 # --- Wi-Fi (primary backend, matches iwd/main.conf) ---
 iwd
+# Regulatory database + the tool that sets the country (config/wifi-regdom.sh).
+# Without them the kernel stays in the world domain and routers on channels
+# 12-13 or 5 GHz DFS channels are invisible.
+wireless-regdb
+iw
 
 # --- Wi-Fi (escape hatch) ---
 # Installed but NOT enabled. broadcom-wl's wl.ko is not a mac80211 driver and

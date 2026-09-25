@@ -349,6 +349,7 @@ fi
 mkdir -p /etc/iwd
 cp "$SCRIPT_DIR/iwd/main.conf" /etc/iwd/main.conf
 enable_unit iwd
+bash "$SCRIPT_DIR/config/wifi-regdom.sh" || echo "wifi: could not set the Wi-Fi country" >&2
 # usbmuxd is udev/socket-activated on Arch; enable the unit only if one exists.
 enable_unit_optional usbmuxd
 echo "services: systemd-networkd, systemd-resolved, iwd enabled"

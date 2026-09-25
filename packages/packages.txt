@@ -75,6 +75,8 @@ bluez-utils
 bluetui
 impala
 iwd
+wireless-regdb
+iw
 # USB tethering from a phone (iPhone needs usbmuxd in userspace, not just the
 # ipheth module); normally installed already by bootstrap.sh
 usbmuxd

@@ -408,6 +408,7 @@ echo "iwd: started"
 sudo mkdir -p /etc/iwd
 sudo cp ./iwd/main.conf /etc/iwd/main.conf
 sudo systemctl enable --now iwd
+sudo bash ./config/wifi-regdom.sh || echo "iwd: could not set the Wi-Fi country" >&2
 # Same care as below: if NetworkManager is what is currently online, stopping it
 # mid-run would cut the AUR downloads off. Disable it for the next boot instead.
 if systemctl is-active --quiet NetworkManager 2>/dev/null; then
