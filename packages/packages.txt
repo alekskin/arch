@@ -93,11 +93,10 @@ usbutils
 # --- Launcher ---
 wofi
 
-# --- Clipboard history + Super+C/X/V key injection ---
+# --- Clipboard history ---
 wl-clipboard
 cliphist
 wl-clip-persist
-wtype
 
 # --- Screenshots & screen recording ---
 grim
